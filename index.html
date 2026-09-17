@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biglietto Festa</title>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Libreria Generazione QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
+    .card { background: white; padding: 25px; border-radius: 12px; max-width: 350px; margin: 20px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
+    button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="form-box">
+    <h2>Ottieni il tuo Biglietto 🎉</h2>
+    <input type="text" id="nome" placeholder="Inserisci Nome e Cognome" required>
+    <button onclick="registraBiglietto()">Genera Biglietto</button>
+  </div>
+
+  <div class="card" id="ticket-box" style="display:none;">
+    <h2 id="guest-name"></h2>
+    <p>Mostra questo QR Code all'ingresso</p>
+    <div id="qrcode"></div>
+    <small id="ticket-id" style="color: #777;"></small>
+  </div>
+
+  <script>
+    // Configurazione Supabase con le tue credenziali
+    const SUPABASE_URL = 'https://mzlfklayavspetoiyxcb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16bGZrbGF5YXZzcGV0b2l5eGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjY3OTUsImV4cCI6MjEwNTI0Mjc5NX0.ToqYxYVyqNE8Kb_Ko1mtUa_mtP1vFU99f8xsoFWs5yU';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function registraBiglietto() {
+      const nomeInput = document.getElementById('nome').value.trim();
+      if (!nomeInput) return alert("Inserisci il tuo nome!");
+
+      // Genera un ID univoco casuale (es: TICKET-8A2F9B)
+      const ticketId = 'TICKET-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Salva sul database Supabase
+      const { data, error } = await supabaseClient
+        .from('tickets')
+        .insert([{ id: ticketId, nome: nomeInput, usato: false }]);
+
+      if (error) {
+        alert("Errore durante la creazione del biglietto: " + error.message);
+        return;
+      }
+
+      // Mostra il biglietto a schermo
+      document.getElementById('guest-name').innerText = nomeInput;
+      document.getElementById('ticket-id').innerText = "Codice: " + ticketId;
+
+      new QRCode(document.getElementById("qrcode"), {
+        text: ticketId,
+        width: 200,
+        height: 200
+      });
+
+      document.getElementById('form-box').style.display = 'none';
+      document.getElementById('ticket-box').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
