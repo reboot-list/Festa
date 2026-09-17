@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner Ingressi</title>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Libreria Lettore QR da Fotocamera -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 15px; background: #121212; color: white; }
+    #reader { width: 100%; max-width: 400px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; }
+    #result { margin-top: 20px; font-size: 1.2rem; font-weight: bold; padding: 20px; border-radius: 8px; white-space: pre-line; }
+    .success { background-color: #28a745; color: white; }
+    .error { background-color: #dc3545; color: white; }
+    .warning { background-color: #ffc107; color: black; }
+    
+    /* Pulsante per attivare l'audio */
+    #audio-btn {
+      background: #007bff; color: white; border: none; padding: 10px 15px; 
+      font-size: 1rem; border-radius: 6px; margin-bottom: 15px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Controllo Ingressi 🎟️</h1>
+  
+  <!-- Pulsante di abilitazione audio per i browser mobile -->
+  <button id="audio-btn" onclick="attivaAudio()">🔊 Attiva Audio Scanner</button>
+
+  <div id="reader"></div>
+  <div id="result" class="warning">Inquadra un QR Code...</div>
+
+  <script>
+    // Configurazione Supabase con le tue credenziali
+    const SUPABASE_URL = 'https://mzlfklayavspetoiyxcb.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16bGZrbGF5YXZzcGV0b2l5eGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjY3OTUsImV4cCI6MjEwNTI0Mjc5NX0.ToqYxYVyqNE8Kb_Ko1mtUa_mtP1vFU99f8xsoFWs5yU';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Context Audio per generare i toni di feedback
+    let audioCtx = null;
+
+    function attivaAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const btn = document.getElementById('audio-btn');
+      btn.innerText = "🔊 Audio Attivo";
+      btn.style.background = "#28a745";
+    }
+
+    // Suono di successo (Nota acuta e pulita)
+    function suonaSuccesso() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota A5 (880Hz)
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    // Suono di errore (Doppio Bip grave)
+    function suonaErrore() {
+      if (!audioCtx) return;
+      
+      const suonaTonoGrave = (tempoInizio) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime + tempoInizio); // Frequenza grave (150Hz)
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime + tempoInizio);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + tempoInizio + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + tempoInizio);
+        osc.stop(audioCtx.currentTime + tempoInizio + 0.2);
+      };
+
+      // Riproduce due bip consecutivi
+      suonaTonoGrave(0);
+      suonaTonoGrave(0.25);
+    }
+
+    let isScanning = true;
+
+    async function onScanSuccess(decodedText) {
+      if (!isScanning) return;
+      isScanning = false;
+
+      // Inizializza l'audio se l'utente non ha premuto il pulsante
+      if (!audioCtx) attivaAudio();
+
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = "warning";
+      resultDiv.innerText = "Verifica in corso...";
+
+      // 1. Cerca il biglietto nel database Supabase
+      const { data, error } = await supabaseClient
+        .from('tickets')
+        .select('*')
+        .eq('id', decodedText)
+        .single();
+
+      if (error || !data) {
+        // Biglietto inesistente
+        suonaErrore();
+        resultDiv.className = "error";
+        resultDiv.innerText = "❌ BIGLIETTO NON VALIDO!";
+      } else if (data.usato) {
+        // Biglietto già utilizzato
+        suonaErrore();
+        resultDiv.className = "error";
+        resultDiv.innerText = `⛔ GIÀ UTILIZZATO!\nNome: ${data.nome}`;
+      } else {
+        // Biglietto valido
+        suonaSuccesso();
+        
+        // Segna il biglietto come USATO sul database
+        await supabaseClient
+          .from('tickets')
+          .update({ usato: true })
+          .eq('id', decodedText);
+
+        resultDiv.className = "success";
+        resultDiv.innerText = `✅ INGRESSO OK!\nBenvenuto/a ${data.nome}`;
+      }
+
+      // Pausa di 3 secondi prima di riabilitare la scansione
+      setTimeout(() => { isScanning = true; }, 3000);
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>
