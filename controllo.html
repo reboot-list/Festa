@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controllo Ingressi</title>
+  <!-- Libreria Scanner QR Code da Fotocamera -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #reader { width: 100%; max-width: 400px; margin: 0 auto; }
+    #result { margin-top: 20px; font-size: 1.2rem; font-weight: bold; padding: 15px; border-radius: 8px; }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+  <h1>Controllo Biglietti 🎟️</h1>
+  <div id="reader"></div>
+  <div id="result">Inquadra un QR Code...</div>
+
+  <script>
+    function onScanSuccess(decodedText, decodedResult) {
+      // decodedText contiene l'ID del biglietto letto dal QR Code
+      const resultDiv = document.getElementById('result');
+
+      // LOGICA DI VERIFICA (Esempio concettuale):
+      // Interroga il database per verificare lo stato del biglietto:
+      //
+      // 1. Se il biglietto esiste ed è valido (non ancora usato):
+      //    -> resultDiv.className = "success";
+      //    -> resultDiv.innerText = "OK! INGRESSO CONSENTITO per " + decodedText;
+      //    -> Aggiorna lo stato sul database in "usato = true"
+      //
+      // 2. Se risulta già usato:
+      //    -> resultDiv.className = "error";
+      //    -> resultDiv.innerText = "ATTENZIONE: BIGLIETTO GIÀ UTILIZZATO!";
+
+      resultDiv.className = "success";
+      resultDiv.innerText = "Scansionato ID: " + decodedText;
+    }
+
+    // Inizializza la fotocamera per lo scanner
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biglietto Festa</title>
+  <!-- Libreria per la generazione dei QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f4f4f9; }
+    .card { background: white; padding: 20px; border-radius: 12px; max-width: 350px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+    input, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background: #28a745; color: white; font-weight: bold; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="form-container">
+    <h2>Registrati alla Festa 🎉</h2>
+    <input type="text" id="nome" placeholder="Il tuo Nome e Cognome" required>
+    <button onclick="generaBiglietto()">Ottieni Biglietto</button>
+  </div>
+
+  <div class="card" id="ticket-container" style="display:none;">
+    <h2 id="guest-name"></h2>
+    <p>Mostra questo QR Code all'ingresso</p>
+    <div id="qrcode"></div>
+    <small id="ticket-id" style="color: #666;"></small>
+  </div>
+
+  <script>
+    function generaBiglietto() {
+      const nome = document.getElementById('nome').value;
+      if (!nome) return alert("Inserisci il tuo nome!");
+
+      // Genera un ID univoco casuale (UUID)
+      const ticketId = 'TICKET-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
+      document.getElementById('guest-name').innerText = nome;
+      document.getElementById('ticket-id').innerText = "ID: " + ticketId;
+
+      // Genera il QR Code contenente l'ID univoco
+      new QRCode(document.getElementById("qrcode"), {
+        text: ticketId,
+        width: 180,
+        height: 180
+      });
+
+      // Mostra la scheda del biglietto
+      document.getElementById('form-container').style.display = 'none';
+      document.getElementById('ticket-container').style.display = 'block';
+
+      // NOTA: Qui invierai i dati (ticketId, nome, usato: false) al database cloud
+    }
+  </script>
+</body>
+</html>
